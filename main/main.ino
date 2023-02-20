@@ -8,13 +8,15 @@ Adafruit_MPU6050 mpu;
 #define TRIGGER_SERVO_PIN 1
 #define ANGLE_SERVO_PIN 2
 
+#define LAUNCH_BUTTON_PIN 3
+
+void ActivateTrigger();
+
 Servo trigger_servo;
 Servo angle_servo;
 const int TRIGGER_CLOSED_ANGLE = 120;
 const int TRIGGER_OPEN_ANGLE = 100;
 const int LAUNCH_ANGLE = 90;
-
-void ActivateTrigger();
 
 enum class State {StandBye, Launching, Resting} state;
 
@@ -32,6 +34,8 @@ void setup(void) {
   angle_servo.attach(ANGLE_SERVO_PIN);
   trigger_servo.write(TRIGGER_CLOSED_ANGLE);
   angle_servo.write(LAUNCH_ANGLE);
+
+  attachInterrupt(digitalPinToInterrupt(LAUNCH_BUTTON_PIN), ActivateTrigger, FALLING);
 
   Serial.println();
   delay(100);
@@ -82,4 +86,8 @@ void MPU_Read() {
   Serial.print(", Y: ");
   Serial.print(g.gyro.y);
   Serial.println(" rad/s");
+}
+
+void ActivateTrigger() {
+  trigger_servo.write(TRIGGER_OPEN_ANGLE);
 }
