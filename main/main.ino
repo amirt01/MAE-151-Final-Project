@@ -4,11 +4,28 @@
 
 Adafruit_MPU6050 mpu;
 
+void MPU_Setup();
+void MPU_Read();
+
 void setup(void) {
   Serial.begin(115200);
   while (!Serial) delay(10);  // wait for serial initialization
   Serial.println("Serial Initialized");
 
+  MPU_Setup();
+
+  Serial.println();
+  delay(100);
+}
+
+void loop() {
+  MPU_Read();
+
+  Serial.println("");
+  delay(500);
+}
+
+void MPU_Setup() {
   if (!mpu.begin()) {
     Serial.println("Failed to find MPU6050");
     while (true) delay(10);
@@ -23,12 +40,9 @@ void setup(void) {
 
   mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
   Serial.print("Filter bandwidth set to: 21 Hz");
-
-  Serial.println();
-  delay(100);
 }
 
-void loop() {
+void MPU_Read() {
   /* Get new sensor events with the readings */
   static sensors_event_t a, g, temp;
   mpu.getEvent(&a, &g, &temp);
@@ -41,7 +55,4 @@ void loop() {
   Serial.print(", Y: ");
   Serial.print(g.gyro.y);
   Serial.println(" rad/s");
-
-  Serial.println("");
-  delay(500);
 }
