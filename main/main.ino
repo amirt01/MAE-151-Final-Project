@@ -1,8 +1,17 @@
 #include <Adafruit_MPU6050.h>
 #include <Adafruit_Sensor.h>
 #include <Wire.h>
+#include <Servo.h>
 
 Adafruit_MPU6050 mpu;
+
+#define TRIGGER_SERVO_PIN 1
+#define ANGLE_SERVO_PIN 2
+
+Servo trigger_servo;
+Servo angle_servo;
+const int OPEN_ANGLE = 120;
+const int LAUNCH_ANGLE = 90;
 
 enum class State {StandBye, Launching, Resting} state;
 
@@ -16,6 +25,9 @@ void setup(void) {
 
   MPU_Setup();
 
+  trigger_servo.attach(TRIGGER_SERVO_PIN);
+  angle_servo.attach(ANGLE_SERVO_PIN);
+
   Serial.println();
   delay(100);
 }
@@ -23,6 +35,7 @@ void setup(void) {
 void loop() {
   switch(state) {
     case State::StandBye:
+      angle_servo.write(LAUNCH_ANGLE);
       break;
     case State::Launching:
       MPU_Read();
@@ -33,9 +46,6 @@ void loop() {
       Serial.println("state error");
       while(true);
   }
-
-  Serial.println("");
-  delay(500);
 }
 
 void MPU_Setup() {
