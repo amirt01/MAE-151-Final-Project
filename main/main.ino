@@ -23,7 +23,7 @@ enum class State {StandBye, Launching, Resting} state;
 void MPU_Setup();
 void MPU_Read();
 
-void setup(void) {
+void setup() {
   Serial.begin(115200);
   while (!Serial) delay(10);  // wait for serial initialization
   Serial.println("Serial Initialized");
