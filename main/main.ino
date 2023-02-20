@@ -50,9 +50,6 @@ void loop() {
       break;
     case State::Resting:
       break;
-    default:
-      Serial.println("state error");
-      while(true);
   }
 }
 
@@ -89,5 +86,6 @@ void MPU_Read() {
 }
 
 void ActivateTrigger() {
+  state = State::Launching;
   trigger_servo.write(TRIGGER_OPEN_ANGLE);
 }
