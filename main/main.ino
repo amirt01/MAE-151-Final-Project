@@ -4,6 +4,8 @@
 
 Adafruit_MPU6050 mpu;
 
+enum class State {StandBye, Launching, Resting} state;
+
 void MPU_Setup();
 void MPU_Read();
 
@@ -19,7 +21,18 @@ void setup(void) {
 }
 
 void loop() {
-  MPU_Read();
+  switch(state) {
+    case State::StandBye:
+      break;
+    case State::Launching:
+      MPU_Read();
+      break;
+    case State::Resting:
+      break;
+    default:
+      Serial.println("state error");
+      while(true);
+  }
 
   Serial.println("");
   delay(500);
