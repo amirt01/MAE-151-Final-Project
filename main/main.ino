@@ -41,14 +41,16 @@ void dmpDataReady() {
 void ActivateTrigger();
 
 #define TRIGGER_SERVO_PIN 5
-#define ANGLE_SERVO_PIN 3
+#define ANGLE_SERVO_PIN 6
 Servo trigger_servo;
 Servo angle_servo;
 const int TRIGGER_CLOSED_ANGLE = 120;
 const int TRIGGER_OPEN_ANGLE = 100;
 const int LAUNCH_ANGLE = 90;
 
-enum class State { StandBye, Launching, Resting } state;
+enum State { StandBye, Launching, Resting } state;
+
+void Servo_Update();
 
 void MPU_Setup();
 void MPU_Read();
@@ -64,9 +66,10 @@ void setup() {
   trigger_servo.write(TRIGGER_CLOSED_ANGLE);
   angle_servo.write(LAUNCH_ANGLE);
 
+  pinMode(LAUNCH_BUTTON_PIN, INPUT);
   attachInterrupt(digitalPinToInterrupt(LAUNCH_BUTTON_PIN), ActivateTrigger, FALLING);
 
-  state = State::Launching;
+  state = State::StandBye;
 
   // configure LED for output
   pinMode(LED_PIN, OUTPUT);
@@ -78,12 +81,27 @@ void setup() {
 void loop() {
   switch(state) {
     case State::StandBye:
+      Servo_Update();
       break;
     case State::Launching:
       MPU_Read();
       break;
     case State::Resting:
       break;
+  }
+}
+
+void Servo_Update() {
+  static int pos = 0;
+  for (pos = 0; pos <= 180; pos += 1) {
+    trigger_servo.write(pos);
+    angle_servo.write(pos);
+    delay(15);
+  }
+  for (pos = 180; pos >= 0; pos -= 1) {
+    trigger_servo.write(pos);
+    angle_servo.write(pos);
+    delay(15);
   }
 }
 
@@ -175,6 +193,5 @@ void MPU_Read() {
 }
 
 void ActivateTrigger() {
-  state = State::Launching;
-  trigger_servo.write(TRIGGER_OPEN_ANGLE);
+  state = (int)state + 1;
 }
