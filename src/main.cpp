@@ -139,7 +139,7 @@ void loop() {
 
     case State::Resting:
       noTone(BUZZER_PIN);
-      // TODO: reset launch angle to top
+      angle_servo.write(MAX_LAUNCH_ANGLE);
       break;
   }
 
