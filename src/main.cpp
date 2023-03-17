@@ -14,7 +14,8 @@ const int MAX_LAUNCH_ANGLE = 35;
 const int MIN_LAUNCH_ANGLE = 5;
 const int MAX_SERVO_ANGLE = 0;
 const int MIN_SERVO_ANGLE = 180;
-int desired_launch_angle = 0;
+double desired_launch_angle = 0.0;
+double desired_servo_angle = 0.0;
 
 // ================================================================
 // ===                   ACTUATOR VARIABLES                     ===
@@ -84,7 +85,7 @@ void setup() {
   Operations_Setup();
 
   Serial.println();
-  Serial.print("Enter any character to begin: ");
+  Serial.print("Enter launch angle: ");
 }
 
 // ================================================================
@@ -94,11 +95,16 @@ void setup() {
 void loop() {
   switch(state) {
     case State::StandBye:
-      // TODO: take angle input
       if (Serial.available() == 0) break;
       Serial.println();
-
-      angle_servo.write(MAX_SERVO_ANGLE);
+      
+      // Get user input and convert to servo angle
+      // TODO: @PalmerJR Validate that the launch angle can be adjusted with user input and is accurate 
+      desired_launch_angle = Serial.read();
+      desired_servo_angle = map(MIN_LAUNCH_ANGLE, MAX_LAUNCH_ANGLE, MIN_SERVO_ANGLE, MAX_SERVO_ANGLE, desired_launch_angle);
+      if (desired_servo_angle > MAX_SERVO_ANGLE) angle_servo.write(MAX_SERVO_ANGLE);
+      else if (desired_servo_angle < MIN_SERVO_ANGLE) angle_servo.write(MIN_SERVO_ANGLE);
+      else angle_servo.write(desired_servo_angle);
 
       launch_start_time = millis() + 3000;
 
