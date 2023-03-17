@@ -191,7 +191,7 @@ void MPU_Read() {
     max_angular_velocity = -g.gyro.y;
 
   // Update launch_angle
-  actual_launch_angle += -g.gyro.y * (millis() - last_pos_time) / 1000;
+  actual_launch_angle += -g.gyro.y * (millis() - last_pos_time) / 1000;  // FIXME: bug here
 
   // Print velocity
   Serial.print(millis());
@@ -217,7 +217,7 @@ void Update_Buzzer() {
 
 void Print_Data() {
   Serial.print("Launch Velocity: ");
-  Serial.print(max_angular_velocity * 3);  // TODO: add correct length
+  Serial.print(max_angular_velocity * 3);  // FIXME: add correct length
   Serial.println("in/s");
 
   Serial.print("Launch Angle: ");
