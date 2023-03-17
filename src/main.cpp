@@ -96,6 +96,7 @@ void loop() {
     case State::StandBye:
       // TODO: take angle input
       if (Serial.available() == 0) break;
+      Serial.println();
 
       angle_servo.write(MAX_SERVO_ANGLE);
 
