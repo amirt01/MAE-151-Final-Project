@@ -56,7 +56,91 @@ unsigned long buzzer_time = 0;
 enum State { StandBye, Angle_Adjusting, Launching, Resting } state;
 
 // ================================================================
+// ===                  FUNCTION DECLERATIONS                   ===
+// ================================================================
+
+void MPU_Setup();
+void Servo_Setup();
+void Operations_Setup();
+
+void MPU_Read();
+void Update_Blink();
+void Update_Buzzer();
+void Print_Data();
+
+// ================================================================
 // ===                          SETUP                           ===
+// ================================================================
+
+void setup() {
+  Serial.begin(115200);
+  while (!Serial) {
+    delay(10); // will pause until serial console opens
+  }
+  Serial.println("Serial Initialized");
+
+  MPU_Setup();
+  Servo_Setup();
+  Operations_Setup();
+
+  Serial.println();
+  Serial.print("Enter any character to begin: ");
+}
+
+// ================================================================
+// ===                           RUN                            ===
+// ================================================================
+
+void loop() {
+  switch(state) {
+    case State::StandBye:
+      // TODO: take angle input
+      if (Serial.available() == 0) break;
+
+      angle_servo.write(MAX_SERVO_ANGLE);
+
+      launch_start_time = millis() + 3000;
+
+      state = State::Angle_Adjusting;
+
+    case State::Angle_Adjusting:
+      // launch when timer goes off
+      if (millis() < launch_start_time) {
+        Update_Buzzer();
+        break;
+      }
+      
+      // Track launch time
+      launch_end_time = millis() + RECORDING_TIME;
+
+      // Update trigger servo
+      trigger_servo.write(TRIGGER_OPEN_ANGLE);
+
+      state = State::Launching;
+
+    case State::Launching:
+      // Read until launch is over
+      if (millis() < launch_end_time) {
+        MPU_Read();
+        break;
+      }
+      
+      Print_Data();
+
+      state = State::Resting;
+      break;
+
+    case State::Resting:
+      noTone(BUZZER_PIN);
+      // TODO: reset launch angle to top
+      break;
+  }
+
+  Update_Blink();
+}
+
+// ================================================================
+// ===                   FUNCTION DEFINITIONS                   ===
 // ================================================================
 
 void MPU_Setup() {
@@ -82,21 +166,10 @@ void Servo_Setup() {
   Serial.println("Servos Initialized");
 }
 
-void setup() {
-  Serial.begin(115200);
-  while (!Serial) {
-    delay(10); // will pause until serial console opens
-  }
-  Serial.println("Serial Initialized");
-
-  MPU_Setup();
-  Servo_Setup();
-
+void Operations_Setup() {
   // TODO: Add on board button support
   // pinMode(LAUNCH_BUTTON_PIN, INPUT);
   // attachInterrupt(digitalPinToInterrupt(LAUNCH_BUTTON_PIN), ActivateTrigger, FALLING);
-
-  state = State::StandBye;
 
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, blinkState);
@@ -104,76 +177,7 @@ void setup() {
 
   pinMode(BUZZER_PIN, OUTPUT);
 
-  Serial.println();
-  Serial.print("Enter any character to begin: ");
-}
-
-// ================================================================
-// ===                           RUN                            ===
-// ================================================================
-
-void loop() {
-  switch(state) {
-    case State::StandBye:
-      // wait for charachter before continuing
-      if (Serial.available() == 0) break;
-
-      // Update servo angle
-      angle_servo.write(MAX_SERVO_ANGLE);
-      state = State::Angle_Adjusting;
-
-      launch_start_time = millis() + 3000;
-
-    case State::Angle_Adjusting:
-      // launch when timer goes off
-      if (millis() < launch_start_time) {
-        if (millis() > buzzer_time) {
-          buzzer_state = !buzzer_state;
-          if (buzzer_state) tone(BUZZER_PIN, 1000);
-          else noTone(BUZZER_PIN);
-          buzzer_time += 500;
-        }
-        break;
-      }
-      
-      // Track launch time
-      launch_end_time = millis() + RECORDING_TIME;
-
-      // Update trigger servo
-      trigger_servo.write(TRIGGER_OPEN_ANGLE);
-      state = State::Launching;
-
-    case State::Launching:
-      // Read until launch is over
-      if (millis() < launch_end_time) {
-        MPU_Read();
-        break;
-      }
-      
-      // Present data
-      Serial.print("Launch Velocity: ");
-      Serial.print(max_angular_velocity * 3);  // TODO: add correct length
-      Serial.println("in/s");
-
-      Serial.print("Launch Angle: ");
-      Serial.print(degrees(actual_launch_angle));
-      Serial.println("deg");
-
-      state = State::Resting;
-      break;
-
-    case State::Resting:
-      noTone(BUZZER_PIN);
-      // TODO: reset launch angle to top
-      break;
-  }
-
-  // Blink every second
-  if (millis() > toggle_time) {
-    blinkState = !blinkState;
-    toggle_time = millis() + 300;
-    digitalWrite(LED_PIN, blinkState);
-  }
+  state = State::StandBye;
 }
 
 void MPU_Read() {
@@ -193,4 +197,30 @@ void MPU_Read() {
   Serial.print(millis());
   Serial.print(" ");
   Serial.println(-g.gyro.y);
+}
+
+// Blink every second
+void Update_Blink() {
+  if (millis() < toggle_time) return;
+  blinkState = !blinkState;
+  toggle_time = millis() + 300;
+  digitalWrite(LED_PIN, blinkState);
+}
+
+void Update_Buzzer() {
+  if (millis() < buzzer_time) return;
+  buzzer_state = !buzzer_state;
+  if (buzzer_state) tone(BUZZER_PIN, 1000);
+  else noTone(BUZZER_PIN);
+  buzzer_time += 500;
+}
+
+void Print_Data() {
+  Serial.print("Launch Velocity: ");
+  Serial.print(max_angular_velocity * 3);  // TODO: add correct length
+  Serial.println("in/s");
+
+  Serial.print("Launch Angle: ");
+  Serial.print(degrees(actual_launch_angle));
+  Serial.println("deg");
 }
