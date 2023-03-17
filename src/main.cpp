@@ -157,11 +157,9 @@ void MPU_Setup() {
       delay(10);
     }
   }
-
-  //TODO: update calibration values with propper ones
-  mpu.setAccelerometerRange(MPU6050_RANGE_16_G);
+  
   mpu.setGyroRange(MPU6050_RANGE_2000_DEG);
-  mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
+  mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);  // TODO: we may be able to get more accurate results by adjusting this
   Serial.println("MPU Initialized");
 }
 
