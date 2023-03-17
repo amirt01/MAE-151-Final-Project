@@ -8,7 +8,7 @@
 // ===                 LAUNCH ANGLE VARIABLES                   ===
 // ================================================================
 
-#define ANGLE_SERVO_PIN 6
+#define ANGLE_SERVO_PIN 11
 Servo angle_servo;
 const int MAX_LAUNCH_ANGLE = 35;
 const int MIN_LAUNCH_ANGLE = 5;
@@ -20,7 +20,7 @@ int desired_launch_angle = 0;
 // ===                   ACTUATOR VARIABLES                     ===
 // ================================================================
 
-#define TRIGGER_SERVO_PIN 5
+#define TRIGGER_SERVO_PIN 10
 Servo trigger_servo;
 const int TRIGGER_CLOSED_ANGLE = 80;
 const int TRIGGER_OPEN_ANGLE = 90;
@@ -32,7 +32,7 @@ const int TRIGGER_OPEN_ANGLE = 90;
 Adafruit_MPU6050 mpu;
 void MPU_Read();
 
-const int RECORDING_TIME = 300;
+const int RECORDING_TIME = 250;
 unsigned long launch_start_time = 0;
 unsigned long launch_end_time = 0;
 
@@ -47,7 +47,12 @@ float actual_launch_angle = radians(0);  // initial launch angle
 // #define LAUNCH_BUTTON_PIN 4
 #define LED_PIN 13
 bool blinkState = false;
-int toggle_time = 0;
+unsigned long toggle_time = 0;
+
+#define BUZZER_PIN 9
+bool buzzer_state = false;
+unsigned long buzzer_time = 0;
+
 enum State { StandBye, Angle_Adjusting, Launching, Resting } state;
 
 // ================================================================
@@ -97,6 +102,8 @@ void setup() {
   digitalWrite(LED_PIN, blinkState);
   toggle_time = millis() + 1000;
 
+  pinMode(BUZZER_PIN, OUTPUT);
+
   Serial.println();
   Serial.print("Enter any character to begin: ");
 }
@@ -110,30 +117,30 @@ void loop() {
     case State::StandBye:
       // wait for charachter before continuing
       if (Serial.available() == 0) break;
-      Serial.end();
-      Serial.begin(115200);
-      Serial.println();
 
       // Update servo angle
       angle_servo.write(MAX_SERVO_ANGLE);
       state = State::Angle_Adjusting;
 
-      Serial.print("Enter any character to continue: ");
+      launch_start_time = millis() + 3000;
 
     case State::Angle_Adjusting:
-      // wait for character before continuing
-      if (Serial.available() == 0) break;
-      Serial.end();
-      Serial.begin(115200);
-      Serial.println();
+      // launch when timer goes off
+      if (millis() < launch_start_time) {
+        if (millis() > buzzer_time) {
+          buzzer_state = !buzzer_state;
+          if (buzzer_state) tone(BUZZER_PIN, 1000);
+          else noTone(BUZZER_PIN);
+          buzzer_time += 500;
+        }
+        break;
+      }
+      
+      // Track launch time
+      launch_end_time = millis() + RECORDING_TIME;
 
       // Update trigger servo
       trigger_servo.write(TRIGGER_OPEN_ANGLE);
-
-      // Track launch time
-      launch_start_time = millis();
-      launch_end_time = launch_start_time + RECORDING_TIME;
-      
       state = State::Launching;
 
     case State::Launching:
@@ -156,6 +163,7 @@ void loop() {
       break;
 
     case State::Resting:
+      noTone(BUZZER_PIN);
       // TODO: reset launch angle to top
       break;
   }
@@ -163,7 +171,7 @@ void loop() {
   // Blink every second
   if (millis() > toggle_time) {
     blinkState = !blinkState;
-    toggle_time = millis() + 1000;
+    toggle_time = millis() + 300;
     digitalWrite(LED_PIN, blinkState);
   }
 }
@@ -179,7 +187,7 @@ void MPU_Read() {
     max_angular_velocity = -g.gyro.y;
 
   // Update launch_angle
-  actual_launch_angle += -g.gyro.y * (millis() - last_pos_time);
+  actual_launch_angle += -g.gyro.y * (millis() - last_pos_time) / 1000;
 
   // Print velocity
   Serial.print(millis());
