@@ -12,8 +12,8 @@
 Servo angle_servo;
 const int MAX_LAUNCH_ANGLE = 35;
 const int MIN_LAUNCH_ANGLE = 5;
-const int MAX_SERVO_ANGLE = 180;
-const int MIN_SERVO_ANGLE = 0;
+const int MAX_SERVO_ANGLE = 0;
+const int MIN_SERVO_ANGLE = 180;
 int launch_angle = 0;
 
 // ================================================================
@@ -22,8 +22,8 @@ int launch_angle = 0;
 
 #define TRIGGER_SERVO_PIN 5
 Servo trigger_servo;
-const int TRIGGER_CLOSED_ANGLE = 100;
-const int TRIGGER_OPEN_ANGLE = 80;
+const int TRIGGER_CLOSED_ANGLE = 80;
+const int TRIGGER_OPEN_ANGLE = 90;
 
 // ================================================================
 // ===                      MPU VARIABLES                       ===
@@ -32,9 +32,11 @@ const int TRIGGER_OPEN_ANGLE = 80;
 Adafruit_MPU6050 mpu;
 void MPU_Read();
 
-const int RECORDING_TIME = 1000;
-int launch_start_time = 0;
-int launch_end_time = 0;
+const int RECORDING_TIME = 300;
+unsigned long launch_start_time = 0;
+unsigned long launch_end_time = 0;
+
+float max_angular_velocity = 0;
 
 // ================================================================
 // ===                       OPERATIONS                         ===
@@ -43,6 +45,7 @@ int launch_end_time = 0;
 // #define LAUNCH_BUTTON_PIN 4
 #define LED_PIN 13
 bool blinkState = false;
+int toggle_time = 0;
 enum State { StandBye, Angle_Adjusting, Launching, Resting } state;
 
 // ================================================================
@@ -59,7 +62,7 @@ void MPU_Setup() {
 
   //TODO: update calibration values with propper ones
   mpu.setAccelerometerRange(MPU6050_RANGE_16_G);
-  mpu.setGyroRange(MPU6050_RANGE_250_DEG);
+  mpu.setGyroRange(MPU6050_RANGE_2000_DEG);
   mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
   Serial.println("MPU Initialized");
 }
@@ -89,8 +92,11 @@ void setup() {
   state = State::StandBye;
 
   pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, blinkState);
+  toggle_time = millis() + 1000;
 
   Serial.println();
+  Serial.print("Enter any character to begin: ");
 }
 
 // ================================================================
@@ -100,36 +106,69 @@ void setup() {
 void loop() {
   switch(state) {
     case State::StandBye:
-      Serial.print("Enter any character to begin: ");
-      while (Serial.available() == 0) {}
-      Serial.println();
+      // wait for charachter before continuing
+      if (Serial.available() == 0) break;
       Serial.end();
       Serial.begin(115200);
+      Serial.println();
+
+      // Update servo angle
+      angle_servo.write(MAX_SERVO_ANGLE);
       state = State::Angle_Adjusting;
 
-    case State::Angle_Adjusting:
-      angle_servo.write(MAX_SERVO_ANGLE);
       Serial.print("Enter any character to continue: ");
-      while (Serial.available() == 0) {}
+
+    case State::Angle_Adjusting:
+      // wait for character before continuing
+      if (Serial.available() == 0) break;
+      Serial.end();
+      Serial.begin(115200);
       Serial.println();
+
+      // Update trigger servo
+      trigger_servo.write(TRIGGER_OPEN_ANGLE);
+
+      // Track launch time
       launch_start_time = millis();
       launch_end_time = launch_start_time + RECORDING_TIME;
+      
       state = State::Launching;
 
     case State::Launching:
-      trigger_servo.write(TRIGGER_OPEN_ANGLE);
-      if (millis() > launch_end_time) break;
-      MPU_Read();
+      // Read until launch is over
+      if (millis() < launch_end_time) {
+        MPU_Read();
+        break;
+      }
+      
+      // Present data
+      Serial.print("Launch Velocity: ");
+      Serial.print(max_angular_velocity * 3);
+      Serial.println("in/s");
+
+      state = State::Resting;
       break;
-      // state = State::Resting;
 
     case State::Resting:
       break;
   }
+
+  // Blink every second
+  if (millis() > toggle_time) {
+    blinkState = !blinkState;
+    toggle_time = millis() + 1000;
+    digitalWrite(LED_PIN, blinkState);
+  }
 }
 
 void MPU_Read() {
-  sensors_event_t a;
-  mpu.getAccelerometerSensor()->getEvent(&a);
-  Serial.println(-a.acceleration.x);
+  sensors_event_t g;
+  if (mpu.getGyroSensor()->getEvent(&g)) {
+    if (-g.gyro.y > max_angular_velocity)
+      max_angular_velocity = -g.gyro.y;
+
+    Serial.print(millis());
+    Serial.print(" ");
+    Serial.println(-g.gyro.y);
+  }
 }
