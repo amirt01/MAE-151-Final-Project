@@ -14,7 +14,7 @@ const int MAX_LAUNCH_ANGLE = 35;
 const int MIN_LAUNCH_ANGLE = 5;
 const int MAX_SERVO_ANGLE = 0;
 const int MIN_SERVO_ANGLE = 180;
-int launch_angle = 0;
+int desired_launch_angle = 0;
 
 // ================================================================
 // ===                   ACTUATOR VARIABLES                     ===
@@ -37,6 +37,8 @@ unsigned long launch_start_time = 0;
 unsigned long launch_end_time = 0;
 
 float max_angular_velocity = 0;
+unsigned long last_pos_time = 0;
+float actual_launch_angle = radians(0);  // initial launch angle
 
 // ================================================================
 // ===                       OPERATIONS                         ===
@@ -143,13 +145,18 @@ void loop() {
       
       // Present data
       Serial.print("Launch Velocity: ");
-      Serial.print(max_angular_velocity * 3);
+      Serial.print(max_angular_velocity * 3);  // TODO: add correct length
       Serial.println("in/s");
+
+      Serial.print("Launch Angle: ");
+      Serial.print(degrees(actual_launch_angle));
+      Serial.println("deg");
 
       state = State::Resting;
       break;
 
     case State::Resting:
+      // TODO: reset launch angle to top
       break;
   }
 
@@ -162,13 +169,20 @@ void loop() {
 }
 
 void MPU_Read() {
+  // Try to get data and return if failed
   sensors_event_t g;
-  if (mpu.getGyroSensor()->getEvent(&g)) {
-    if (-g.gyro.y > max_angular_velocity)
-      max_angular_velocity = -g.gyro.y;
+  if (!mpu.getGyroSensor()->getEvent(&g))
+    return;
 
-    Serial.print(millis());
-    Serial.print(" ");
-    Serial.println(-g.gyro.y);
-  }
+  // Update max velocity
+  if (-g.gyro.y > max_angular_velocity)
+    max_angular_velocity = -g.gyro.y;
+
+  // Update launch_angle
+  actual_launch_angle += -g.gyro.y * (millis() - last_pos_time);
+
+  // Print velocity
+  Serial.print(millis());
+  Serial.print(" ");
+  Serial.println(-g.gyro.y);
 }
