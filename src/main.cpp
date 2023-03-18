@@ -114,7 +114,7 @@ void loop() {
       state = State::Angle_Adjusting;
 
     case State::Angle_Adjusting:
-      // launch when timer goes off
+      // buzz until launch timer goes off
       if (millis() < launch_start_time) {
         Update_Buzzer();
         break;
