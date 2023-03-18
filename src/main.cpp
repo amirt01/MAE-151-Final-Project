@@ -51,11 +51,12 @@ const unsigned long LAUNCH_DELAY = 3000;
 #define LED_PIN 13
 bool blinkState = false;
 unsigned long toggle_time = 0;
+const unsigned int LED_INCREMENT = 300;
 
 #define BUZZER_PIN 9
 bool buzzer_state = false;
 unsigned long buzzer_time = 0;
-const unsigned long BUZZER_INCREMENT = LAUNCH_DELAY / 3 / 2;
+const unsigned int BUZZER_INCREMENT = LAUNCH_DELAY / 3 / 2;
 
 enum class State { StandBye, Angle_Adjusting, Launching, Resting } state;
 
@@ -209,7 +210,7 @@ void MPU_Read() {
 void Update_Blink() {
   if (millis() < toggle_time) return;
   blinkState = !blinkState;
-  toggle_time = millis() + 300;
+  toggle_time = millis() + LED_INCREMENT;
   digitalWrite(LED_PIN, blinkState);
 }
 
