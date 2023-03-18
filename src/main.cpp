@@ -39,11 +39,13 @@ unsigned long launch_end_time = 0;
 
 float max_angular_velocity = 0;
 unsigned long last_pos_time = 0;
-float actual_launch_angle = radians(0);  // initial launch angle
+float actual_launch_angle = radians(0);  // FIXME: add initial launch angle
 
 // ================================================================
 // ===                       OPERATIONS                         ===
 // ================================================================
+
+const unsigned long LAUNCH_DELAY = 3000;
 
 // #define LAUNCH_BUTTON_PIN 4
 #define LED_PIN 13
@@ -53,8 +55,9 @@ unsigned long toggle_time = 0;
 #define BUZZER_PIN 9
 bool buzzer_state = false;
 unsigned long buzzer_time = 0;
+const unsigned long BUZZER_INCREMENT = LAUNCH_DELAY / 3 / 2;
 
-enum State { StandBye, Angle_Adjusting, Launching, Resting } state;
+enum class State { StandBye, Angle_Adjusting, Launching, Resting } state;
 
 // ================================================================
 // ===                  FUNCTION DECLERATIONS                   ===
@@ -106,7 +109,7 @@ void loop() {
       else if (desired_servo_angle < MIN_SERVO_ANGLE) angle_servo.write(MIN_SERVO_ANGLE);
       else angle_servo.write(desired_servo_angle);
 
-      launch_start_time = millis() + 3000;
+      launch_start_time = millis() + LAUNCH_DELAY;
 
       state = State::Angle_Adjusting;
 
@@ -135,12 +138,10 @@ void loop() {
       Print_Data();
 
       state = State::Resting;
-      break;
 
     case State::Resting:
       noTone(BUZZER_PIN);
       angle_servo.write(MAX_LAUNCH_ANGLE);
-      break;
   }
 
   Update_Blink();
@@ -217,7 +218,7 @@ void Update_Buzzer() {
   buzzer_state = !buzzer_state;
   if (buzzer_state) tone(BUZZER_PIN, 1000);
   else noTone(BUZZER_PIN);
-  buzzer_time += 500;
+  buzzer_time += BUZZER_INCREMENT;
 }
 
 void Print_Data() {
