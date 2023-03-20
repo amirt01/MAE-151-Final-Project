@@ -188,17 +188,20 @@ void MPU_Read() {
   if (!mpu.getGyroSensor()->getEvent(&g))
     return;
 
+  const static float INITIAL_READING = -g.gyro.y;
+  const float NEW_READING = -g.gyro.y - INITIAL_READING;
+
   // Update max velocity
-  if (-g.gyro.y > max_angular_velocity)
-    max_angular_velocity = -g.gyro.y;
+  if (NEW_READING > max_angular_velocity)
+    max_angular_velocity = NEW_READING;
 
   // Update launch_angle
-  actual_launch_angle += -g.gyro.y * (millis() - last_pos_time) / 1000;  // FIXME: bug here
+  actual_launch_angle += NEW_READING * (millis() - last_pos_time) / 1000;  // FIXME: bug here
 
   // Print angular velocity
   Serial.print(millis());
   Serial.print(" ");
-  Serial.println(-g.gyro.y);
+  Serial.println(NEW_READING);
 }
 
 // Blink every second
