@@ -212,7 +212,7 @@ void Update_Blink() {
   blinkState = !blinkState;
   digitalWrite(LED_PIN, blinkState);
 
-  toggle_time = millis() + LED_INCREMENT;
+  toggle_time += LED_INCREMENT;
 }
 
 void Update_Buzzer() {
