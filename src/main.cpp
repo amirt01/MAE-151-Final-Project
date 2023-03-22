@@ -10,8 +10,8 @@
 
 #define ANGLE_SERVO_PIN 11
 Servo angle_servo;
-constexpr short MAX_LAUNCH_ANGLE = 35;
-constexpr short MIN_LAUNCH_ANGLE = 5;
+constexpr short MAX_LAUNCH_ANGLE = 57;
+constexpr short MIN_LAUNCH_ANGLE = 27;
 constexpr short MAX_SERVO_ANGLE = 0;
 constexpr short MIN_SERVO_ANGLE = 180;
 double desired_launch_angle = 0.0;
@@ -101,8 +101,8 @@ void loop() {
       
       // Get user input and convert to servo angle
       // TODO: @PalmerJR Validate that the launch angle can be adjusted with user input and is accurate 
-      desired_launch_angle = Serial.read();
-      desired_servo_angle = map(MIN_LAUNCH_ANGLE, MAX_LAUNCH_ANGLE, MIN_SERVO_ANGLE, MAX_SERVO_ANGLE, desired_launch_angle);
+      desired_launch_angle = Serial.parseFloat();
+      desired_servo_angle = map(desired_launch_angle, MIN_LAUNCH_ANGLE, MAX_LAUNCH_ANGLE, MIN_SERVO_ANGLE, MAX_SERVO_ANGLE);
       if (desired_servo_angle > MAX_SERVO_ANGLE) angle_servo.write(MAX_SERVO_ANGLE);
       else if (desired_servo_angle < MIN_SERVO_ANGLE) angle_servo.write(MIN_SERVO_ANGLE);
       else angle_servo.write(desired_servo_angle);
