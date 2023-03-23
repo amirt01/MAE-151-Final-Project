@@ -10,12 +10,12 @@
 
 #define ANGLE_SERVO_PIN 11
 Servo angle_servo;
-constexpr short MAX_LAUNCH_ANGLE = 57;
-constexpr short MIN_LAUNCH_ANGLE = 27;
-constexpr short MAX_SERVO_ANGLE = 0;
-constexpr short MIN_SERVO_ANGLE = 180;
-double desired_launch_angle = 0.0;
-double desired_servo_angle = 0.0;
+constexpr short MAX_LAUNCH_ANGLE = 45;
+constexpr short MIN_LAUNCH_ANGLE = 29;
+constexpr short MAX_SERVO_ANGLE = 180;
+constexpr short MIN_SERVO_ANGLE = 0;
+int desired_launch_angle = 0.0;
+int desired_servo_angle = 0.0;
 
 // ================================================================
 // ===                   ACTUATOR VARIABLES                     ===
@@ -39,7 +39,10 @@ unsigned long launch_end_time = 0;
 
 float max_angular_velocity = 0;
 unsigned long last_pos_time = 0;
-float actual_launch_angle = radians(0);  // FIXME: add initial launch angle
+double actual_launch_angle = radians(225);
+
+float max_linear_velocity = 0.f;
+unsigned long last_accel_time = 0.f;
 
 // ================================================================
 // ===                       OPERATIONS                         ===
@@ -101,11 +104,9 @@ void loop() {
       
       // Get user input and convert to servo angle
       // TODO: @PalmerJR Validate that the launch angle can be adjusted with user input and is accurate 
-      desired_launch_angle = Serial.parseFloat();
+      desired_launch_angle = Serial.parseInt();
       desired_servo_angle = map(desired_launch_angle, MIN_LAUNCH_ANGLE, MAX_LAUNCH_ANGLE, MIN_SERVO_ANGLE, MAX_SERVO_ANGLE);
-      if (desired_servo_angle > MAX_SERVO_ANGLE) angle_servo.write(MAX_SERVO_ANGLE);
-      else if (desired_servo_angle < MIN_SERVO_ANGLE) angle_servo.write(MIN_SERVO_ANGLE);
-      else angle_servo.write(desired_servo_angle);
+      angle_servo.write(desired_servo_angle);
 
       state = State::Angle_Adjusting;
 
@@ -125,6 +126,8 @@ void loop() {
 
       // Track launch time
       launch_end_time = millis() + RECORDING_TIME;
+      last_accel_time = millis();
+      last_pos_time = millis();
 
     case State::Launching:
       // Read until launch is over
@@ -139,7 +142,7 @@ void loop() {
 
     case State::Resting:
       noTone(BUZZER_PIN);
-      angle_servo.write(MAX_LAUNCH_ANGLE);
+      angle_servo.write(MIN_SERVO_ANGLE);
   }
 
   Update_Blink();
@@ -155,8 +158,9 @@ void MPU_Setup() {
     while (true) delay(10);
   }
   
+  mpu.setAccelerometerRange(MPU6050_RANGE_16_G);
   mpu.setGyroRange(MPU6050_RANGE_2000_DEG);
-  mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);  // TODO: we may be able to get more accurate results by adjusting this
+  mpu.setFilterBandwidth(MPU6050_BAND_260_HZ);  // TODO: we may be able to get more accurate results by adjusting this
   Serial.println("MPU Initialized");
 }
 
@@ -184,24 +188,39 @@ void Operations_Setup() {
 
 void MPU_Read() {
   // Try to get data and return if failed
-  sensors_event_t g;
+  sensors_event_t a, g;
   if (!mpu.getGyroSensor()->getEvent(&g))
     return;
 
-  const static float INITIAL_READING = -g.gyro.y;
-  const float NEW_READING = -g.gyro.y - INITIAL_READING;
+  if(!mpu.getAccelerometerSensor()->getEvent(&a))
+    return;
+
+  const static float INITIAL_GYRO_READING = -g.gyro.y;
+  const float NEW_GYRO_READING = -g.gyro.y - INITIAL_GYRO_READING;
+
+  const static float INITIAL_ACCEL_READING = -a.acceleration.x;
+  const float NEW_ACCEL_READING = -a.acceleration.x - INITIAL_ACCEL_READING;
 
   // Update max velocity
-  if (NEW_READING > max_angular_velocity)
-    max_angular_velocity = NEW_READING;
+  if (NEW_GYRO_READING > max_angular_velocity)
+    max_angular_velocity = NEW_GYRO_READING;
+
+  const float NEW_LINEAR_VELOCITY = NEW_ACCEL_READING * (millis() - last_accel_time);
+
+  if (NEW_LINEAR_VELOCITY > max_linear_velocity)
+    max_linear_velocity = NEW_LINEAR_VELOCITY;
 
   // Update launch_angle
-  actual_launch_angle += NEW_READING * (millis() - last_pos_time) / 1000;  // FIXME: bug here
+  actual_launch_angle += NEW_GYRO_READING * (millis() - last_pos_time) / 1000;
+
+  last_accel_time = millis();
 
   // Print angular velocity
   Serial.print(millis());
   Serial.print(" ");
-  Serial.println(NEW_READING);
+  Serial.print(NEW_GYRO_READING);
+  Serial.print(" ");
+  Serial.println(NEW_LINEAR_VELOCITY);
 }
 
 // Blink every second
@@ -227,9 +246,13 @@ void Update_Buzzer() {
 }
 
 void Print_Data() {
-  Serial.print("Launch Velocity: ");
-  Serial.print(max_angular_velocity * 3);  // FIXME: add correct length
+  Serial.print("Launch Velocity (gyro): ");
+  Serial.print(max_angular_velocity * 3.97);
   Serial.println("in/s");
+  
+  Serial.print("Launch Velocity (accel): ");
+  Serial.print(max_linear_velocity);
+  Serial.println("m/s");
 
   Serial.print("Launch Angle: ");
   Serial.print(degrees(actual_launch_angle));
